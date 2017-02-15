@@ -80,7 +80,8 @@ type Vehicle struct {
 //==============================================================================================================================
 
 type mortgage_portfolio struct {
-	mortgageNumbers 	[]int `json:"mortgageNumbers"`
+	mortgageNumbers []int    `json:"mortgageNumbers"`
+	customerNames   []string `json:"customerNames"`
 }
 // ============================================================================================================================
 // Main
@@ -98,6 +99,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
   // initialize the Mortgage number to 1000000
 	var mortgages mortgage_portfolio
 	mortgages.mortgageNumbers = []int{1000000}
+	mortgages.customerNames   = []string{""}
 	bytes, err := json.Marshal(mortgages)
 	if err != nil {
 		 return nil, errors.New("Error creating Mortgage Portfolio record")
