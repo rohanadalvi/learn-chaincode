@@ -46,7 +46,7 @@ type SimpleChaincode struct {
 //	Mortgage - Defines the structure for a Mortgage object. JSON on right tells it what JSON fields to map to
 //			  that element when reading a JSON object into the struct e.g. JSON customerName -> Struct customer Name.
 //==============================================================================================================================
-type Vehicle struct {
+type Mortgage struct {
 	customerName               string  `json:"customerName"`
 	customerAddress            string  `json:"customerAddress"`
 	customerSSN                string  `json:"customerSSN"`
@@ -121,8 +121,8 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	// Handle different functions
 	if function == "init" {													//initialize the chaincode state, used as reset
 		 return t.Init(stub, "init", args)
-	} else if function == "create_application" {
-                return t.create_application(stub, args)
+	} else if function == "create_Mortgage_application" {
+                return t.create_Mortgage_application(stub, args)
         }
 
 	fmt.Println("invoke did not find func: " + function)					//error
@@ -131,18 +131,31 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 }
 
 // write function
-func (t *SimpleChaincode) write(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-    var name, value string
+func (t *SimpleChaincode) create_Mortgage_application(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+    var mortgage Mortgage
+		var mortgages mortgage_portfolio
     var err error
-    fmt.Println("running write()")
+		var bytes []byte
+    fmt.Println("running create_Mortgage_application()")
 
-    if len(args) != 2 {
-        return nil, errors.New("Incorrect number of arguments. Expecting 2. name of the variable and value to set")
+    if len(args) != 1 {
+        return nil, errors.New("Incorrect number of arguments. Expecting one JSON object to create mortgage application")
     }
+		mortgage_json := args[0]
+    err = json.Unmarshal([]byte(mortgage_json), &mortgage)
+    if err != nil {
+			  return nil, error.New("error while Unmarshalling mortgage json object")
+		}
+		stub.GetState("mortgages", bytes)
+		err = json.Unmarshal(bytes,&mortgages)
+		if err != nil {
+ 			  return nil, error.New("error while Unmarshalling mortgages for new mortgage number")
+ 		}
+		mortgage.mortgageNumber = mortgages.mortgageNumbers[len(mortgages.mortgageNumbers)-1]+1
+	  mortgages.mortgageNumbers = append(mortgages.mortgageNumbers,mortgage.mortgageNumber)
+	  mortgages.customerNames   = append(mortgages.customerNames,mortgage.customerName)
 
-    name = args[0]                            //rename for fun
-    value = args[1]
-    err = stub.PutState(name, []byte(value))  //write the variable into the chaincode state
+    err = stub.PutState(mortgage.mortgageNumber, []byte(mortgage))  //write the variable into the chaincode state
     if err != nil {
         return nil, err
     }
