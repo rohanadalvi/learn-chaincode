@@ -7,18 +7,15 @@ package main
 import (
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"encoding/json"
-	"regexp"
 )
 
 
 //==============================================================================================================================
 //	 Participating Entities
 //==============================================================================================================================
-const   FEDERAL_RESERVE   =  "federal_reserve"
+/*const   FEDERAL_RESERVE   =  "federal_reserve"
 const   CUSTOMER          =  "customer"
 const   LENDING_BANK      =  "lendor"
 const   PARTNER_BANK      =  "partner_bank"
@@ -26,17 +23,17 @@ const   AUDITOR           =  "auditor"
 const   GSE               =  "gse"
 const   BROKER            =  "broker"
 const   CITY_COUNCIL      =   "city_council"
-const   DATA_PROVIDER    =   "data_service_provider"
+const   DATA_PROVIDER    =   "data_service_provider"*/
 
 
 //==============================================================================================================================
 //	 MORTGAGE STAGES/LIFE CYCLE.
 //==============================================================================================================================
-const   APPLICATION  			      =  0
+/*const   APPLICATION  			      =  0
 const   LENDING_DECISION  			=  1
 const   APPROVED_DENIED  			  =  2
 const   RESELL                	=  3
-const   SOLD            			  =  4
+const   SOLD            			  =  4*/
 
 // SimpleChaincode example simple Chaincode implementation
 type SimpleChaincode struct {
@@ -122,8 +119,10 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	if function == "init" {													//initialize the chaincode state, used as reset
 		 return t.Init(stub, "init", args)
 	} else if function == "create_Mortgage_application" {
-                return t.create_Mortgage_application(stub, args)
-        }
+     return t.create_Mortgage_application(stub, args)
+  } else if function == "modify_Mortgage" {
+     return t.modify_Mortgage(stub, args)
+  }
 
 	fmt.Println("invoke did not find func: " + function)					//error
 
@@ -149,14 +148,17 @@ func (t *SimpleChaincode) create_Mortgage_application(stub shim.ChaincodeStubInt
 		mortgage_json := args[0]
     err = json.Unmarshal([]byte(mortgage_json), &mortgage)
     if err != nil {
-			  return nil, error.New("error while Unmarshalling mortgage json object")
+			  return nil, errors.New("error while Unmarshalling mortgage json object")
 		}
 
 		//Get latest mortgages porfolio in blockchain and assign it to variable array
-		stub.GetState("mortgages", bytes)
+		bytes, err = stub.GetState("mortgages")
+		if err != nil {
+			  return nil, errors.New("error while retrieving mortgage portfolio json object")
+		}
 		err = json.Unmarshal(bytes,&mortgages)
 		if err != nil {
- 			  return nil, error.New("error while Unmarshalling mortgages for new mortgage number")
+ 			  return nil, errors.New("error while Unmarshalling mortgages for new mortgage number")
  		}
 
 		// Generate Unique mortgage number and append to Mortgage portfolio
@@ -165,17 +167,73 @@ func (t *SimpleChaincode) create_Mortgage_application(stub shim.ChaincodeStubInt
 	  mortgages.CustomerNames   = append(mortgages.CustomerNames,mortgage.CustomerName)
 
     //Store Mortgage in blockchain
-		err = stub.PutState(mortgage.MortgageNumber, []byte(mortgage))
+		mortgagebytes, err := json.Marshal(mortgage)
+		if err != nil {
+			 return nil, errors.New("Error in Marshalling New Mortgage record")
+		 }
+		err = stub.PutState(string(mortgage.MortgageNumber),mortgagebytes)
     if err != nil {
         return nil, err
     }
 
     //Store current Mortgage Portfolio in blockchain.
-		bytes, err := json.Marshal(mortgages)
+		bytes, err = json.Marshal(mortgages)
 		if err != nil {
 			 return nil, errors.New("Add to Mortgage Portfolio record")
 		 }
 		err = stub.PutState("mortgages", bytes)
+
+    return nil, nil
+}
+
+func (t *SimpleChaincode) modify_Mortgage(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+    // Variable declaration
+	  var mortgage Mortgage
+		var currentmortgage Mortgage
+    var err error
+		var mortgagebytes []byte
+
+		//Logging
+    fmt.Println("running modify_Mortgage()")
+
+    // verify is the Json is sent.
+    if len(args) != 1 {
+        return nil, errors.New("Incorrect number of arguments. Expecting one JSON object to create mortgage application")
+    }
+		//Assign JSON input and convert it to bytes
+		mortgage_json := args[0]
+    err = json.Unmarshal([]byte(mortgage_json), &mortgage)
+    if err != nil {
+			  return nil, errors.New("error while Unmarshalling mortgage json object")
+		}
+
+		//Get latest mortgages porfolio in blockchain and assign it to variable array
+		mortgagebytes, err = stub.GetState(string(mortgage.MortgageNumber))
+		if err != nil {
+ 			  return nil, errors.New("error while fetching mortgage number")
+ 		}
+
+		err = json.Unmarshal(mortgagebytes,&currentmortgage)
+		if err != nil {
+ 			  return nil, errors.New("error while Unmarshalling mortgages for current mortgage number")
+ 		}
+
+		//Update current Mortgage Fields
+		err = json.Unmarshal([]byte(mortgage_json), &currentmortgage)
+    if err != nil {
+			  return nil, errors.New("error while Unmarshalling mortgage json object")
+		}
+
+
+    //Store Mortgage in blockchain
+		mortgagebytes, err = json.Marshal(currentmortgage)
+		if err != nil {
+			 return nil, errors.New("Error in Marshalling New Mortgage record")
+		 }
+		err = stub.PutState(string(currentmortgage.MortgageNumber), mortgagebytes)
+    if err != nil {
+        return nil, err
+    }
 
     return nil, nil
 }
@@ -186,8 +244,8 @@ func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function strin
 	fmt.Println("query is running " + function)
 
 	// Handle different functions
-	if function == "read" {                            //read a variable
-           return t.read(stub, args)
+	if function == "retrieve_mortgage_portfolio" {                            //read a variable
+           return t.retrieve_mortgage_portfolio(stub, args)
         }
 
 	fmt.Println("query did not find func: " + function)						//error
@@ -195,20 +253,15 @@ func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function strin
 	return nil, errors.New("Received unknown function query: " + function)
 }
 
-func (t *SimpleChaincode) read(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-    var name, jsonResp string
+func (t *SimpleChaincode) retrieve_mortgage_portfolio(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+    var jsonResp string
     var err error
 
-    if len(args) != 1 {
-        return nil, errors.New("Incorrect number of arguments. Expecting name of the var to query")
-    }
-
-    name = args[0]
-    valAsbytes, err := stub.GetState(name)
+    //retrieve Mortgage Portfolio
+    valAsbytes, err := stub.GetState("mortgages")
     if err != nil {
-        jsonResp = "{\"Error\":\"Failed to get state for " + name + "\"}"
+        jsonResp = "{\"Error\":\"Failed to retrieve mortgage portfolio\"}"
         return nil, errors.New(jsonResp)
     }
-
     return valAsbytes, nil
 }
