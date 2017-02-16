@@ -47,31 +47,31 @@ type SimpleChaincode struct {
 //			  that element when reading a JSON object into the struct e.g. JSON customerName -> Struct customer Name.
 //==============================================================================================================================
 type Mortgage struct {
-	customerName               string  `json:"customerName"`
-	customerAddress            string  `json:"customerAddress"`
-	customerSSN                string  `json:"customerSSN"`
-	customerDOB                string  `json:"customerDOB"`
-	mortgageNumber             int     `json:"mortgageNumber"`
-	mortgageStage              string  `json:"mortgageStage"`
-	mortgagePropertyOwnership  string  `json:"MortgagePropertyOwnership"`
-	mortagePropertyAddress     string  `json:"mortagePropertyAddress"`
-	reqLoanAmount              int     `json:"reqLoanAmount"`
-	grantedLoanAmount          int     `json:"grantedLoanAmount"`
-	mortgageType               string  `json:"mortgageType"`
-	rateofInterest             float64 `json:"mortgageType"`
-	mortgageStartDate          string  `json:"mortgageStartDate"`
-	mortgageDuration           int     `json:"mortgageDuration"`
-	lastPaymentAmount          int     `json:"lastPaymentAmount"`
-  propertyValuation          int     `json:"propertyValuation"`
-	creditScore                int     `json:"propertyValuation"`
-	financialWorth             int     `json:"propertyValuation"`
-	riskClassification         string  `json:"riskClassification"`
-	riskAdjustedReturn         float64  `json:"riskAdjustedReturn"`
-	expectedAnnualCashflow     int     `json:"expectedAnnualCashflow"`
-	remainingMortgageAmount    int     `json:"remainingMortgageAmount"`
-	ownershipcost              int     `json:"ownershipcost"`
-	conformedMortgage          bool    `json:"conformedMortgage"`
-	modifiedBy                 string  `json:"modifiedBy"`
+	CustomerName               string  `json:"CustomerName"`
+	CustomerAddress            string  `json:"CustomerAddress"`
+	CustomerSSN                int     `json:"CustomerSSN"`
+	CustomerDOB                string  `json:"CustomerDOB"`
+	MortgageNumber             int     `json:"MortgageNumber"`
+	MortgageStage              string  `json:"MortgageStage"`
+	MortgagePropertyOwnership  string  `json:"MortgagePropertyOwnership"`
+	MortagePropertyAddress     string  `json:"MortagePropertyAddress"`
+	ReqLoanAmount              int     `json:"ReqLoanAmount"`
+	GrantedLoanAmount          int     `json:"GrantedLoanAmount"`
+	MortgageType               string  `json:"MortgageType"`
+	RateofInterest             float64 `json:"RateofInterest"`
+	MortgageStartDate          string  `json:"MortgageStartDate"`
+	MortgageDuration           int     `json:"MortgageDuration"`
+	LastPaymentAmount          int     `json:"LastPaymentAmount"`
+  PropertyValuation          int     `json:"PropertyValuation"`
+	CreditScore                int     `json:"CreditScore"`
+	FinancialWorth             int     `json:"FinancialWorth"`
+	RiskClassification         string  `json:"RiskClassification"`
+	RiskAdjustedReturn         float64 `json:"RiskAdjustedReturn"`
+	ExpectedAnnualCashflow     int     `json:"ExpectedAnnualCashflow"`
+	RemainingMortgageAmount    int     `json:"RemainingMortgageAmount"`
+	Ownershipcost              int     `json:"Ownershipcost"`
+	ConformedMortgage          bool    `json:"ConformedMortgage"`
+	ModifiedBy                 string  `json:"ModifiedBy"`
 }
 
 //==============================================================================================================================
@@ -80,8 +80,8 @@ type Mortgage struct {
 //==============================================================================================================================
 
 type mortgage_portfolio struct {
-	mortgageNumbers []int    `json:"mortgageNumbers"`
-	customerNames   []string `json:"customerNames"`
+	MortgageNumbers []int    `json:"MortgageNumbers"`
+	CustomerNames   []string `json:"CustomerNames"`
 }
 // ============================================================================================================================
 // Main
@@ -98,8 +98,8 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 
   // initialize the Mortgage number to 1000000
 	var mortgages mortgage_portfolio
-	mortgages.mortgageNumbers = []int{1000000}
-	mortgages.customerNames   = []string{""}
+	mortgages.MortgageNumbers = []int{1000000}
+	mortgages.CustomerNames   = []string{""}
 	bytes, err := json.Marshal(mortgages)
 	if err != nil {
 		 return nil, errors.New("Error creating Mortgage Portfolio record")
@@ -132,33 +132,51 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 
 // write function
 func (t *SimpleChaincode) create_Mortgage_application(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-    var mortgage Mortgage
+    // Variable declaration
+	  var mortgage Mortgage
 		var mortgages mortgage_portfolio
     var err error
 		var bytes []byte
+
+		//Logging
     fmt.Println("running create_Mortgage_application()")
 
+    // verify is the Json is sent.
     if len(args) != 1 {
         return nil, errors.New("Incorrect number of arguments. Expecting one JSON object to create mortgage application")
     }
+		//Assign JSON input and convert it to bytes
 		mortgage_json := args[0]
     err = json.Unmarshal([]byte(mortgage_json), &mortgage)
     if err != nil {
 			  return nil, error.New("error while Unmarshalling mortgage json object")
 		}
+
+		//Get latest mortgages porfolio in blockchain and assign it to variable array
 		stub.GetState("mortgages", bytes)
 		err = json.Unmarshal(bytes,&mortgages)
 		if err != nil {
  			  return nil, error.New("error while Unmarshalling mortgages for new mortgage number")
  		}
-		mortgage.mortgageNumber = mortgages.mortgageNumbers[len(mortgages.mortgageNumbers)-1]+1
-	  mortgages.mortgageNumbers = append(mortgages.mortgageNumbers,mortgage.mortgageNumber)
-	  mortgages.customerNames   = append(mortgages.customerNames,mortgage.customerName)
 
-    err = stub.PutState(mortgage.mortgageNumber, []byte(mortgage))  //write the variable into the chaincode state
+		// Generate Unique mortgage number and append to Mortgage portfolio
+		mortgage.MortgageNumber = mortgages.MortgageNumbers[len(mortgages.MortgageNumbers)-1]+1
+	  mortgages.MortgageNumbers = append(mortgages.MortgageNumbers,mortgage.MortgageNumber)
+	  mortgages.CustomerNames   = append(mortgages.CustomerNames,mortgage.CustomerName)
+
+    //Store Mortgage in blockchain
+		err = stub.PutState(mortgage.MortgageNumber, []byte(mortgage))
     if err != nil {
         return nil, err
     }
+
+    //Store current Mortgage Portfolio in blockchain.
+		bytes, err := json.Marshal(mortgages)
+		if err != nil {
+			 return nil, errors.New("Add to Mortgage Portfolio record")
+		 }
+		err = stub.PutState("mortgages", bytes)
+
     return nil, nil
 }
 
