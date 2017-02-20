@@ -419,6 +419,8 @@ func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function strin
            return t.retrieve_mortgage_portfolio(stub, args)
   }else if function == "retrieve_mortgage" {
 			     return t.retrieve_mortgage(stub, args)
+	}else if function == "retrieve_mortgage" {
+			     return t.retrieve_mortgages(stub, args)
 	}
 
 	fmt.Println("query did not find func: " + function)						//error
@@ -467,4 +469,45 @@ func (t *SimpleChaincode) retrieve_mortgage(stub shim.ChaincodeStubInterface, ar
 			return nil, errors.New("error while fetching mortgage number")
 	}
     return mortgagebytes, nil
+}
+
+func (t *SimpleChaincode) retrieve_mortgages(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+    var jsonResp string
+    var err error
+		var mortgages mortgage_portfolio
+		var mortgage_list []Mortgage
+		var mortgage Mortgage
+		var value int
+		var mortgagebytes []byte
+    //retrieve Mortgage Portfolio
+    valAsbytes, err := stub.GetState("mortgages")
+    if err != nil {
+        jsonResp = "{\"Error\":\"Failed to retrieve mortgage portfolio\"}"
+        return nil, errors.New(jsonResp)
+    }
+		err = json.Unmarshal(valAsbytes,&mortgages)
+		if err != nil {
+				return nil, errors.New("error while Unmarshalling mortgages")
+		}
+
+	 // identify place to update mortgage portfolio
+		for _ , value = range mortgages.MortgageNumbers {
+				//Get latest mortgage in blockchain and assign it to variable array
+				mortgagebytes, err = stub.GetState(string(value))
+				if err != nil {
+		 			  return nil, errors.New("error while fetching mortgage number")
+		 		}
+
+				err = json.Unmarshal(mortgagebytes,&mortgage)
+				if err != nil {
+		 			  return nil, errors.New("error while Unmarshalling mortgages for mortgage number")
+		 		}else {
+					  mortgage_list = append(mortgage_list,mortgage)
+			}
+		}
+		mortgagelist_bytes, err := json.Marshal(mortgage_list)
+		if err != nil {
+				return nil, errors.New("error while marshalling the mortage list")
+		}
+    return mortgagelist_bytes, nil
 }
