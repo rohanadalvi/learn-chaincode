@@ -419,7 +419,7 @@ func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function strin
            return t.retrieve_mortgage_portfolio(stub, args)
   }else if function == "retrieve_mortgage" {
 			     return t.retrieve_mortgage(stub, args)
-	}else if function == "retrieve_mortgage" {
+	}else if function == "retrieve_mortgages" {
 			     return t.retrieve_mortgages(stub, args)
 	}
 
