@@ -52,7 +52,7 @@ type Mortgage struct {
 	MortgageNumber             int     `json:"MortgageNumber"`
 	MortgageStage              string  `json:"MortgageStage"`
 	MortgagePropertyOwnership  string  `json:"MortgagePropertyOwnership"`
-	MortagePropertyAddress     string  `json:"MortagePropertyAddress"`
+	MortgagePropertyAddress    string  `json:"MortgagePropertyAddress"`
 	ReqLoanAmount              int     `json:"ReqLoanAmount"`
 	GrantedLoanAmount          int     `json:"GrantedLoanAmount"`
 	MortgageType               string  `json:"MortgageType"`
