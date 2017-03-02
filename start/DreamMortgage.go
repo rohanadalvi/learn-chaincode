@@ -56,7 +56,7 @@ type Mortgage struct {
 	ReqLoanAmount              int     `json:"ReqLoanAmount"`
 	GrantedLoanAmount          int     `json:"GrantedLoanAmount"`
 	MortgageType               string  `json:"MortgageType"`
-	RateofInterest             float64 `json:"RateofInterest"`
+	RateofInterest             float32 `json:"RateofInterest"`
 	MortgageStartDate          string  `json:"MortgageStartDate"`
 	MortgageDuration           int     `json:"MortgageDuration"`
 	LastPaymentAmount          int     `json:"LastPaymentAmount"`
@@ -64,7 +64,7 @@ type Mortgage struct {
 	CreditScore                int     `json:"CreditScore"`
 	FinancialWorth             int     `json:"FinancialWorth"`
 	RiskClassification         string  `json:"RiskClassification"`
-	RiskAdjustedReturn         float64 `json:"RiskAdjustedReturn"`
+	RiskAdjustedReturn         float32 `json:"RiskAdjustedReturn"`
 	ExpectedAnnualCashflow     int     `json:"ExpectedAnnualCashflow"`
 	RemainingMortgageAmount    int     `json:"RemainingMortgageAmount"`
 	Ownershipcost              int     `json:"Ownershipcost"`
@@ -248,25 +248,23 @@ func (t *SimpleChaincode) modify_mortgage(stub shim.ChaincodeStubInterface, args
 		}
 
     // smart contract fields
-		// Update Mortgage Stage.
+		// Update Mortgage Stage and update Mortgage Property Ownership
 		if strings.ToUpper(currentmortgage.MortgageStage)== "APPROVED:" && currentmortgage.Ownershipcost > 0 {
 			 currentmortgage.GrantedLoanAmount = currentmortgage.Ownershipcost
 			 currentmortgage.MortgageStage="Disbursed:"
 			 amountDisbursed=true
 		}else{
 			 amountDisbursed=false
-			 if (strings.ToUpper(currentmortgage.MortgageStage)== "DISBURSED:READY TO PURCHASE" || strings.ToUpper(currentmortgage.MortgageStage)== "DISBURSED:READY TO SELL") && mortgage.Ownershipcost > 0 {
-				  currentmortgage.MortgageStage="Disbursed:Sold"
-			 }
 		}
 
-    // Update Mortgage Property Ownership
-     if amountDisbursed  {
+    if amountDisbursed  {
 			  currentmortgage.MortgagePropertyOwnership="LENDING_BANK"
-		 }else if strings.ToUpper(currentmortgage.MortgageStage)== "DISBURSED:READY TO PURCHASE" && mortgage.Ownershipcost > 0 {
+		}else if strings.ToUpper(currentmortgage.MortgageStage)== "DISBURSED:READY TO PURCHASE" && mortgage.Ownershipcost > 0 {
 			  currentmortgage.MortgagePropertyOwnership="GSE"
-		 }else if strings.ToUpper(currentmortgage.MortgageStage)== "DISBURSED:READY TO SELL" && mortgage.Ownershipcost > 0 {
+				currentmortgage.MortgageStage="Disbursed:Sold"
+		}else if strings.ToUpper(currentmortgage.MortgageStage)== "DISBURSED:REQUEST TO PURCHASE" && mortgage.Ownershipcost > 0 {
 			  currentmortgage.MortgagePropertyOwnership="PARTNER_BANK"
+				currentmortgage.MortgageStage="Disbursed:Sold"
 		 } else if strings.Index(strings.ToUpper(currentmortgage.MortgageStage),"DISBURSED:") < 0 {
 			 currentmortgage.MortgagePropertyOwnership="NOT_ACCQUIRED"
 		 }
